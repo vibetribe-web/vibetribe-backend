@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.models.event import EventStatus
 from app.models.request import RequestStatus
 from app.models.team_member import TeamMemberRole
 from app.schemas.user import UserRead
@@ -104,6 +105,7 @@ class TeamEventSummary(BaseModel):
     title: str
     event_type: str
     start_date: datetime
+    event_status: EventStatus
 
     model_config = ConfigDict(from_attributes=True)
 

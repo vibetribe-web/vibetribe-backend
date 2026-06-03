@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.exceptions import AppException
 from app.models.club import Club
-from app.models.event import Event
+from app.models.event import Event, EventStatus
 from app.models.event_interest import EventInterest
 from app.models.user import User
 from app.models.team_member import TeamMember
@@ -166,6 +166,8 @@ def list_club_events(db: Session, club_id: int) -> list[Event]:
 
 def mark_interested(db: Session, event_id: int, user: User) -> EventInterestResponse:
     event = get_public_event_model(db, event_id)
+    if event.event_status == EventStatus.finished:
+        raise AppException("This event has ended", status.HTTP_400_BAD_REQUEST)
     existing = db.scalar(
         select(EventInterest).where(
             EventInterest.event_id == event.id,
@@ -276,6 +278,7 @@ def build_event_response(
         image_url=event.image_url,
         interested_count=counts.get(event.id, 0),
         is_interested=event.id in interested_ids,
+        event_status=event.event_status,
         club=event.club,
         created_at=event.created_at,
         updated_at=event.updated_at,

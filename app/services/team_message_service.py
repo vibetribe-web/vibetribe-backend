@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.exceptions import AppException
-from app.models.event import Event
+from app.models.event import Event, EventStatus
 from app.models.team_message import TeamMessage, TeamMessageType
 from app.models.user import User
 from app.schemas.team_message import (
@@ -84,6 +84,8 @@ def share_event(
     event = db.get(Event, payload.event_id)
     if event is None:
         raise AppException("Event not found", status.HTTP_404_NOT_FOUND)
+    if event.event_status == EventStatus.finished:
+        raise AppException("This event has ended", status.HTTP_400_BAD_REQUEST)
 
     message = TeamMessage(
         team_id=team_id,
@@ -127,6 +129,7 @@ def build_message_response(message: TeamMessage) -> TeamMessageRead:
             description=message.event.description,
             club_id=message.event.club_id,
             club_name=message.event.club.name if message.event.club else "Unknown club",
+            event_status=message.event.event_status,
         )
 
     return TeamMessageRead(

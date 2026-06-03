@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
-from app.models.event import EventMode, EventType
+from app.models.event import EventMode, EventStatus, EventType
 from app.models.team_message import TeamMessageType
 
 
@@ -52,6 +52,7 @@ class TeamMessageEventRead(BaseModel):
     description: str
     club_id: int
     club_name: str
+    event_status: EventStatus
 
 
 class TeamMessageRead(BaseModel):

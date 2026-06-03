@@ -3,7 +3,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.exceptions import AppException
-from app.models.event import Event
+from app.models.event import Event, EventStatus
 from app.models.request import JoinRequest, RequestStatus
 from app.models.team import Team
 from app.models.team_member import TeamMember, TeamMemberRole
@@ -13,8 +13,12 @@ from app.services.taxonomy_service import get_or_create_skills
 
 
 def create_team(db: Session, payload: TeamCreate, leader: User) -> TeamWorkflowResponse:
-    if payload.event_id is not None and db.get(Event, payload.event_id) is None:
-        raise AppException("Event not found", status.HTTP_404_NOT_FOUND)
+    if payload.event_id is not None:
+        event = db.get(Event, payload.event_id)
+        if event is None:
+            raise AppException("Event not found", status.HTTP_404_NOT_FOUND)
+        if event.event_status == EventStatus.finished:
+            raise AppException("This event has ended", status.HTTP_400_BAD_REQUEST)
     team = Team(
         name=payload.name,
         description=payload.description,
@@ -255,8 +259,12 @@ def update_team(db: Session, team_id: int, payload: TeamUpdate, user: User) -> T
     if "hackathon_category" in values:
         team.hackathon_category = values["hackathon_category"]
     if "event_id" in values:
-        if values["event_id"] is not None and db.get(Event, values["event_id"]) is None:
-            raise AppException("Event not found", status.HTTP_404_NOT_FOUND)
+        if values["event_id"] is not None:
+            event = db.get(Event, values["event_id"])
+            if event is None:
+                raise AppException("Event not found", status.HTTP_404_NOT_FOUND)
+            if event.event_status == EventStatus.finished:
+                raise AppException("This event has ended", status.HTTP_400_BAD_REQUEST)
         team.event_id = values["event_id"]
     db.add(team)
     db.commit()

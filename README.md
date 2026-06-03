@@ -46,7 +46,7 @@ CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 ADMIN_SETUP_KEY=replace-with-a-private-admin-bootstrap-key
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
-GOOGLE_REDIRECT_URI=http://127.0.0.1:8000/api/v1/auth/google/callback
+GOOGLE_REDIRECT_URI=http://127.0.0.1:8001/api/v1/auth/google/callback
 FRONTEND_AUTH_SUCCESS_URL=
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
@@ -66,10 +66,10 @@ alembic upgrade head
 
 ```powershell
 venv\Scripts\activate
-uvicorn app.main:app --reload
+uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
 ```
 
-API docs are available at `http://127.0.0.1:8000/docs`.
+API docs are available at `http://127.0.0.1:8001/docs`.
 
 Health check:
 
@@ -132,7 +132,7 @@ https://your-render-service.onrender.com/api/v1/auth/google/callback
 Keep the local redirect URI too if you still test locally:
 
 ```text
-http://127.0.0.1:8000/api/v1/auth/google/callback
+http://127.0.0.1:8001/api/v1/auth/google/callback
 ```
 
 ## Main endpoints

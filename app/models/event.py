@@ -1,5 +1,5 @@
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -16,6 +16,18 @@ class EventMode(str, enum.Enum):
     online = "online"
     offline = "offline"
     hybrid = "hybrid"
+
+
+class EventStatus(str, enum.Enum):
+    upcoming = "upcoming"
+    ongoing = "ongoing"
+    finished = "finished"
+
+
+def _as_aware_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
 
 
 class Event(Base):
@@ -73,3 +85,14 @@ class Event(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+    @property
+    def event_status(self) -> EventStatus:
+        now = datetime.now(timezone.utc)
+        start_date = _as_aware_utc(self.start_date)
+        end_date = _as_aware_utc(self.end_date)
+        if now < start_date:
+            return EventStatus.upcoming
+        if now <= end_date:
+            return EventStatus.ongoing
+        return EventStatus.finished

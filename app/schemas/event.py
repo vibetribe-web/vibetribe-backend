@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import AnyUrl, BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.models.event import EventMode, EventType
+from app.models.event import EventMode, EventStatus, EventType
 from app.schemas.club import ClubPublicResponse
 
 
@@ -75,6 +75,7 @@ class EventPublicResponse(BaseModel):
     image_url: str | None
     interested_count: int = 0
     is_interested: bool = False
+    event_status: EventStatus
     club: ClubPublicResponse | None = None
     created_at: datetime
     updated_at: datetime
