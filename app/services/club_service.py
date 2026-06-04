@@ -13,6 +13,7 @@ from app.schemas.club import (
     ClubLeaderResponse,
     ClubMemberActionResponse,
     ClubMemberResponse,
+    ClubPublicResponse,
     ClubUpdate,
 )
 
@@ -71,6 +72,17 @@ def _member_response(membership: ClubMember) -> ClubMemberResponse:
     )
 
 
+def _public_response(club: Club) -> ClubPublicResponse:
+    return ClubPublicResponse(
+        id=club.id,
+        name=club.name,
+        description=club.description,
+        event_count=len(club.events),
+        created_at=club.created_at,
+        updated_at=club.updated_at,
+    )
+
+
 def _admin_response(club: Club) -> ClubAdminResponse:
     leaders = [
         _leader_response(membership)
@@ -81,6 +93,7 @@ def _admin_response(club: Club) -> ClubAdminResponse:
         id=club.id,
         name=club.name,
         description=club.description,
+        event_count=len(club.events),
         is_active=club.is_active,
         created_by=club.created_by,
         created_at=club.created_at,
@@ -219,11 +232,30 @@ def _ensure_not_last_leader(db: Session, club_id: int, user_id: int) -> None:
         raise AppException("Cannot remove or demote the last club leader", status.HTTP_400_BAD_REQUEST)
 
 
-def list_active_clubs(db: Session) -> list[Club]:
+def get_public_club(db: Session, club_id: int) -> ClubPublicResponse:
+    club = db.scalar(
+        select(Club)
+        .where(Club.id == club_id, Club.is_active.is_(True))
+        .options(
+            selectinload(Club.members).selectinload(ClubMember.user),
+            selectinload(Club.events),
+        )
+    )
+    if club is None:
+        raise AppException("Club not found", status.HTTP_404_NOT_FOUND)
+    return _public_response(club)
+
+
+def list_active_clubs(db: Session) -> list[ClubPublicResponse]:
     return list(
-        db.scalars(
+        _public_response(club)
+        for club in db.scalars(
             select(Club)
             .where(Club.is_active.is_(True))
+            .options(
+                selectinload(Club.members).selectinload(ClubMember.user),
+                selectinload(Club.events),
+            )
             .order_by(Club.name)
         )
     )
@@ -259,7 +291,7 @@ def add_member(
     actor: User,
 ) -> ClubMemberActionResponse:
     club = get_active_club(db, club_id)
-    ensure_club_leader(db, club.id, actor)
+    ensure_club_member(db, club.id, actor)
     _get_user(db, user_id)
     if _get_membership(db, club.id, user_id) is not None:
         raise AppException("User is already a club member", status.HTTP_409_CONFLICT)
@@ -310,6 +342,8 @@ def promote_member(
 ) -> ClubMemberActionResponse:
     club = get_active_club(db, club_id)
     ensure_club_leader(db, club.id, actor)
+    if actor.id == user_id:
+        raise AppException("Club leaders cannot promote themselves", status.HTTP_400_BAD_REQUEST)
     membership = _get_membership(db, club.id, user_id)
     if membership is None:
         raise AppException("Club membership not found", status.HTTP_404_NOT_FOUND)
@@ -335,6 +369,8 @@ def demote_leader(
 ) -> ClubMemberActionResponse:
     club = get_active_club(db, club_id)
     ensure_club_leader(db, club.id, actor)
+    if actor.id == user_id:
+        raise AppException("Club leaders cannot demote themselves", status.HTTP_400_BAD_REQUEST)
     membership = _get_membership(db, club.id, user_id)
     if membership is None:
         raise AppException("Club membership not found", status.HTTP_404_NOT_FOUND)
@@ -355,7 +391,7 @@ def demote_leader(
 
 def list_club_members(db: Session, club_id: int, actor: User) -> list[ClubMemberResponse]:
     club = get_active_club(db, club_id)
-    ensure_club_leader(db, club.id, actor)
+    ensure_club_member(db, club.id, actor)
     memberships = list(
         db.scalars(
             select(ClubMember)

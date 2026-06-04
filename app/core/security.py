@@ -18,6 +18,10 @@ bearer_scheme = HTTPBearer(
     scheme_name="Bearer JWT",
     description="Paste your VibeTribe JWT access token. Swagger sends it as Authorization: Bearer <token>.",
 )
+optional_bearer_scheme = HTTPBearer(
+    scheme_name="Optional Bearer JWT",
+    auto_error=False,
+)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
@@ -114,6 +118,18 @@ def get_current_user(
             detail="User not found",
         )
     return user
+
+
+def get_optional_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_bearer_scheme),
+    db: Session = Depends(get_db),
+) -> User | None:
+    if credentials is None:
+        return None
+    try:
+        return get_current_user(credentials, db)
+    except HTTPException:
+        return None
 
 
 def require_admin_user(current_user: User = Depends(get_current_user)) -> User:

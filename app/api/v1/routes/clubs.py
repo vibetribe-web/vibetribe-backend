@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Depends, File, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.core.security import get_current_user
+from app.core.security import get_current_user, get_optional_current_user
 from app.db.database import get_db
-from app.models.club import Club
 from app.models.event import Event
 from app.models.user import User
 from app.schemas.club import ClubMemberActionResponse, ClubMemberResponse, ClubPublicResponse
@@ -14,13 +13,13 @@ router = APIRouter()
 
 
 @router.get("/", response_model=list[ClubPublicResponse])
-def list_clubs(db: Session = Depends(get_db)) -> list[Club]:
+def list_clubs(db: Session = Depends(get_db)) -> list[ClubPublicResponse]:
     return club_service.list_active_clubs(db)
 
 
 @router.get("/{club_id}", response_model=ClubPublicResponse)
-def get_club(club_id: int, db: Session = Depends(get_db)) -> Club:
-    return club_service.get_active_club(db, club_id)
+def get_club(club_id: int, db: Session = Depends(get_db)) -> ClubPublicResponse:
+    return club_service.get_public_club(db, club_id)
 
 
 @router.post("/{club_id}/members/{user_id}", response_model=ClubMemberActionResponse)
@@ -73,8 +72,12 @@ def list_members(
 
 
 @router.get("/{club_id}/events", response_model=list[EventPublicResponse])
-def list_club_events(club_id: int, db: Session = Depends(get_db)) -> list[Event]:
-    return event_service.list_club_events(db, club_id)
+def list_club_events(
+    club_id: int,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
+) -> list[EventPublicResponse]:
+    return event_service.list_club_events(db, club_id, current_user)
 
 
 @router.post("/{club_id}/event-poster-upload", response_model=EventPosterUploadResponse)

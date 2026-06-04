@@ -71,7 +71,17 @@ def create_event(db: Session, club_id: int, payload: EventCreate, user: User) ->
     return event
 
 
-def _ensure_event_permission(db: Session, event: Event, club_id: int, user: User) -> None:
+def _ensure_event_edit_permission(db: Session, event: Event, club_id: int, user: User) -> None:
+    if event.club_id != club_id:
+        raise AppException("Event not found for this club", status.HTTP_404_NOT_FOUND)
+    if user.is_admin:
+        return
+    if club_service.is_club_member(db, club_id, user.id):
+        return
+    raise AppException("Only club members can edit this event", status.HTTP_403_FORBIDDEN)
+
+
+def _ensure_event_delete_permission(db: Session, event: Event, club_id: int, user: User) -> None:
     if event.club_id != club_id:
         raise AppException("Event not found for this club", status.HTTP_404_NOT_FOUND)
     if user.is_admin:
@@ -80,7 +90,7 @@ def _ensure_event_permission(db: Session, event: Event, club_id: int, user: User
         return
     if event.created_by == user.id and club_service.is_club_member(db, club_id, user.id):
         return
-    raise AppException("Only club leaders, event owners, or admins can perform this action", status.HTTP_403_FORBIDDEN)
+    raise AppException("Only club leaders, event owners, or admins can delete this event", status.HTTP_403_FORBIDDEN)
 
 
 def update_event(
@@ -92,7 +102,7 @@ def update_event(
 ) -> Event:
     club_service.get_active_club(db, club_id)
     event = get_event(db, event_id)
-    _ensure_event_permission(db, event, club_id, user)
+    _ensure_event_edit_permission(db, event, club_id, user)
 
     values = payload.model_dump(exclude_unset=True)
     start_date = values.get("start_date", event.start_date)
@@ -113,7 +123,7 @@ def update_event(
 
 def delete_event(db: Session, club_id: int, event_id: int, user: User) -> None:
     event = get_event(db, event_id)
-    _ensure_event_permission(db, event, club_id, user)
+    _ensure_event_delete_permission(db, event, club_id, user)
     db.delete(event)
     db.commit()
 
@@ -153,15 +163,20 @@ def list_interested_events(db: Session, user: User) -> list[EventPublicResponse]
     return [build_event_response(event, user, counts, set(event_ids)) for event in events]
 
 
-def list_club_events(db: Session, club_id: int) -> list[Event]:
+def list_club_events(db: Session, club_id: int, user: User | None = None) -> list[EventPublicResponse]:
     club = club_service.get_active_club(db, club_id)
-    return list(
+    events = list(
         db.scalars(
             select(Event)
+            .options(selectinload(Event.club))
             .where(Event.club_id == club.id)
             .order_by(Event.start_date, Event.id)
         )
     )
+    event_ids = [event.id for event in events]
+    counts = get_interest_counts(db, event_ids)
+    interested_ids = get_user_interested_event_ids(db, user.id, event_ids) if user else set()
+    return [build_event_response(event, user, counts, interested_ids) for event in events]
 
 
 def mark_interested(db: Session, event_id: int, user: User) -> EventInterestResponse:
@@ -260,7 +275,7 @@ def get_user_interested_event_ids(db: Session, user_id: int, event_ids: list[int
 
 def build_event_response(
     event: Event,
-    user: User,
+    user: User | None,
     counts: dict[int, int],
     interested_ids: set[int],
 ) -> EventPublicResponse:
