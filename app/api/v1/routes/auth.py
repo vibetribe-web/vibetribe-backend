@@ -1,7 +1,10 @@
 import logging
+from urllib.parse import urlencode
 
+from authlib.integrations.base_client.errors import MismatchingStateError
 from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends, Request, status
+from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -9,7 +12,7 @@ from app.core.config import settings
 from app.core.exceptions import AppException
 from app.db.database import get_db
 from app.models.user import User
-from app.schemas.user import Token, TokenWithUser, UserCreate, UserLogin, UserRead
+from app.schemas.user import Token, UserCreate, UserLogin, UserRead
 from app.services import auth_service, google_auth_service
 
 router = APIRouter()
@@ -53,19 +56,27 @@ def login_user_json(payload: UserLogin, db: Session = Depends(get_db)) -> Token:
 @router.get("/google/login")
 async def google_login(request: Request):
     _ensure_google_oauth_configured()
-    logger.info("Google OAuth login route reached")
+    logger.info("Google OAuth login route reached redirect_uri=%s", settings.google_redirect_uri)
     return await oauth.google.authorize_redirect(
         request,
         redirect_uri=settings.google_redirect_uri,
     )
 
 
-@router.get("/google/callback", response_model=TokenWithUser)
-async def google_callback(request: Request, db: Session = Depends(get_db)) -> TokenWithUser:
+@router.get("/google/callback")
+async def google_callback(request: Request, db: Session = Depends(get_db)):
     _ensure_google_oauth_configured()
     logger.info("Google OAuth callback reached")
 
-    token = await oauth.google.authorize_access_token(request)
+    try:
+        token = await oauth.google.authorize_access_token(request)
+    except MismatchingStateError:
+        logger.warning("Google OAuth state mismatch")
+        if settings.frontend_auth_success_url:
+            auth_url = settings.frontend_auth_success_url.rsplit("/", 1)[0]
+            return RedirectResponse(f"{auth_url}?oauth_error=state")
+        raise AppException("Google sign-in expired. Please try again.", status.HTTP_400_BAD_REQUEST)
+
     user_info = token.get("userinfo")
     if user_info is None:
         user_info = await oauth.google.userinfo(token=token)
@@ -73,4 +84,13 @@ async def google_callback(request: Request, db: Session = Depends(get_db)) -> To
     user_email = user_info.get("email")
     if user_email:
         logger.info("Google OAuth user email received email=%s", user_email)
-    return google_auth_service.login_or_create_google_user(db, dict(user_info))
+    auth_response = google_auth_service.login_or_create_google_user(db, dict(user_info))
+    if settings.frontend_auth_success_url:
+        query = urlencode(
+            {
+                "access_token": auth_response.access_token,
+                "token_type": auth_response.token_type,
+            }
+        )
+        return RedirectResponse(f"{settings.frontend_auth_success_url}?{query}")
+    return auth_response
