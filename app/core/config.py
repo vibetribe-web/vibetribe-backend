@@ -6,6 +6,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+DEFAULT_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://vibetribe-frontend-cyan.vercel.app",
+]
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -32,8 +38,17 @@ def _required_env(name: str) -> str:
 
 def _parse_origins(value: str | None) -> list[str]:
     if not value:
-        return ["*"]
-    return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return DEFAULT_CORS_ORIGINS
+
+    origins = [
+        origin.strip().rstrip("/")
+        for origin in value.split(",")
+        if origin.strip() and origin.strip() != "*"
+    ]
+    for origin in DEFAULT_CORS_ORIGINS:
+        if origin not in origins:
+            origins.append(origin)
+    return origins
 
 
 @lru_cache
