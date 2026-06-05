@@ -42,7 +42,7 @@ DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/postgres?sslmode=require
 SECRET_KEY=replace-with-a-long-random-secret
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
-CORS_ORIGINS=http://localhost:3000,http://localhost:5173,https://vibetribe-frontend-cyan.vercel.app
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173,https://vibetribe.vercel.app,https://vibetribe-two.vercel.app
 ADMIN_SETUP_KEY=replace-with-a-private-admin-bootstrap-key
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
@@ -82,7 +82,7 @@ GET /health
 Use the included `Procfile`:
 
 ```text
-web: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+web: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*"
 ```
 
 Render setup:
@@ -95,7 +95,7 @@ Render setup:
    ```
 4. Start command, if not using the `Procfile`:
    ```bash
-   uvicorn app.main:app --host 0.0.0.0 --port $PORT
+   uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*"
    ```
 5. Add environment variables in Render:
    ```env
@@ -103,12 +103,12 @@ Render setup:
    SECRET_KEY=<long-random-secret>
    ALGORITHM=HS256
    ACCESS_TOKEN_EXPIRE_MINUTES=30
-   CORS_ORIGINS=http://localhost:3000,http://localhost:5173,https://vibetribe-frontend-cyan.vercel.app
+   CORS_ORIGINS=http://localhost:3000,http://localhost:5173,https://vibetribe.vercel.app,https://vibetribe-two.vercel.app
    ADMIN_SETUP_KEY=<private-admin-bootstrap-key>
    GOOGLE_CLIENT_ID=<google-client-id>
    GOOGLE_CLIENT_SECRET=<google-client-secret>
-   GOOGLE_REDIRECT_URI=https://your-render-service.onrender.com/api/v1/auth/google/callback
-   FRONTEND_AUTH_SUCCESS_URL=https://vibetribe-frontend-cyan.vercel.app/auth/success
+   GOOGLE_REDIRECT_URI=https://vibetribe-t07f.onrender.com/api/v1/auth/google/callback
+   FRONTEND_AUTH_SUCCESS_URL=https://vibetribe-two.vercel.app/auth/success
    SUPABASE_URL=https://your-project.supabase.co
    SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
    ```
@@ -126,7 +126,7 @@ Google OAuth production redirect URI:
 Add this exact URI in Google Cloud Console for the deployed backend:
 
 ```text
-https://your-render-service.onrender.com/api/v1/auth/google/callback
+https://vibetribe-t07f.onrender.com/api/v1/auth/google/callback
 ```
 
 Keep the local redirect URI too if you still test locally:

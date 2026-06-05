@@ -9,7 +9,8 @@ load_dotenv()
 DEFAULT_CORS_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",
-    "https://vibetribe-frontend-cyan.vercel.app",
+    "https://vibetribe.vercel.app",
+    "https://vibetribe-two.vercel.app",
 ]
 
 

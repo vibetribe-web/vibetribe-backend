@@ -2,11 +2,11 @@ import logging
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
-from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 logger = logging.getLogger(__name__)
+SERVER_ERROR_MESSAGE = "We are experiencing server issues. Please try again later."
 
 
 class AppException(Exception):
@@ -25,9 +25,10 @@ def register_exception_handlers(app: FastAPI) -> None:
         request: Request,
         exc: AppException,
     ) -> JSONResponse:
+        error = SERVER_ERROR_MESSAGE if exc.status_code >= 500 else exc.detail
         return JSONResponse(
             status_code=exc.status_code,
-            content={"success": False, "error": exc.detail},
+            content={"success": False, "error": error},
         )
 
     @app.exception_handler(StarletteHTTPException)
@@ -35,9 +36,10 @@ def register_exception_handlers(app: FastAPI) -> None:
         request: Request,
         exc: StarletteHTTPException,
     ) -> JSONResponse:
+        error = SERVER_ERROR_MESSAGE if exc.status_code >= 500 else exc.detail
         return JSONResponse(
             status_code=exc.status_code,
-            content={"success": False, "error": exc.detail},
+            content={"success": False, "error": error},
         )
 
     @app.exception_handler(RequestValidationError)
@@ -47,11 +49,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     ) -> JSONResponse:
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={
-                "success": False,
-                "error": "Validation error",
-                "details": jsonable_encoder(exc.errors()),
-            },
+            content={"success": False, "error": "Please check the details and try again."},
         )
 
     @app.exception_handler(Exception)
@@ -62,5 +60,5 @@ def register_exception_handlers(app: FastAPI) -> None:
         logger.exception("Unhandled error while processing %s", request.url.path)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"success": False, "error": "Internal server error"},
+            content={"success": False, "error": SERVER_ERROR_MESSAGE},
         )
