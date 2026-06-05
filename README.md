@@ -33,24 +33,6 @@ app/
   migrations/
 ```
 
-## Environment
-
-Create `.env` from `.env.example`:
-
-```env
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/postgres?sslmode=require
-SECRET_KEY=replace-with-a-long-random-secret
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-ADMIN_SETUP_KEY=replace-with-a-private-admin-bootstrap-key
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_REDIRECT_URI=http://127.0.0.1:8001/api/v1/auth/google/callback
-FRONTEND_AUTH_SUCCESS_URL=
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
-```
 
 Event poster uploads use Supabase Storage bucket `event-posters`. The backend creates one-time signed upload tokens after VibeTribe authentication and club membership checks; the bucket should be public-read so stored poster URLs can render in event cards.
 
@@ -98,20 +80,7 @@ Render setup:
    uvicorn app.main:app --host 0.0.0.0 --port $PORT
    ```
 5. Add environment variables in Render:
-   ```env
-   DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/postgres?sslmode=require
-   SECRET_KEY=<long-random-secret>
-   ALGORITHM=HS256
-   ACCESS_TOKEN_EXPIRE_MINUTES=30
-   CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://your-frontend-domain
-   ADMIN_SETUP_KEY=<private-admin-bootstrap-key>
-   GOOGLE_CLIENT_ID=<google-client-id>
-   GOOGLE_CLIENT_SECRET=<google-client-secret>
-   GOOGLE_REDIRECT_URI=https://your-render-service.onrender.com/api/v1/auth/google/callback
-   FRONTEND_AUTH_SUCCESS_URL=
-   SUPABASE_URL=https://your-project.supabase.co
-   SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
-   ```
+
 6. Run migrations after deploy from a Render shell or locally against the production database:
    ```bash
    alembic upgrade head
